@@ -1,13 +1,19 @@
 //! CAN 通道（仅 Linux / socketCAN）：单线程轮询读写 + 硬件过滤
+//! 非 Linux 平台（macOS/Windows）无 socketCAN：提供同 API 占位，open 即返回错误，
+//! 仅为保证跨平台编译打包；前端 CAN 页只在 Linux 枚举接口，正常不会触发。
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
+
+#[cfg(target_os = "linux")]
+use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket, SocketOptions, StandardId};
+#[cfg(target_os = "linux")]
 use std::time::Duration;
 
-use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket, SocketOptions, StandardId};
 use tauri::AppHandle;
 
+#[cfg(target_os = "linux")]
 use crate::state::{emit_frame, FrameEvt};
 
 pub struct CanSlot {
@@ -32,6 +38,8 @@ impl CanSlot {
     }
 }
 
+/// 构造 CAN 帧标识（标准 11bit / 扩展 29bit）
+#[cfg(target_os = "linux")]
 fn make_id(raw: u32, ext: bool) -> Id {
     if ext {
         socketcan::ExtendedId::new(raw & 0x1FFF_FFFF)
@@ -44,6 +52,8 @@ fn make_id(raw: u32, ext: bool) -> Id {
     }
 }
 
+/// Linux：真实 socketCAN 打开 + 读写线程
+#[cfg(target_os = "linux")]
 pub fn open(app: AppHandle, cfg: &serde_json::Value) -> Result<CanSlot, String> {
     let iface = cfg
         .get("interface")
@@ -120,4 +130,10 @@ pub fn open(app: AppHandle, cfg: &serde_json::Value) -> Result<CanSlot, String> 
         tx: Mutex::new(Some(tx)),
         run,
     })
+}
+
+/// 非 Linux：socketCAN 不可用，统一返回错误
+#[cfg(not(target_os = "linux"))]
+pub fn open(_app: AppHandle, _cfg: &serde_json::Value) -> Result<CanSlot, String> {
+    Err("socketCAN 仅在 Linux 上可用".into())
 }

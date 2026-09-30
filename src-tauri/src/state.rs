@@ -92,6 +92,7 @@ pub enum Slot {
 }
 
 impl Slot {
+    #[cfg_attr(not(target_os = "linux"), allow(unused_variables))] // id/rtr 仅 Linux CAN 槽位使用
     pub fn send(&self, data: Vec<u8>, id: Option<u32>, rtr: Option<bool>) -> Result<(), String> {
         match self {
             Slot::Serial(s) => s.send(data),
