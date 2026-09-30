@@ -55,19 +55,20 @@ def main():
             cx = min(max(x, R), S - R) - x
             cy = min(max(y, R), S - R) - y
             d_rect = math.hypot(cx, cy) - R
-            a_rect = smooth(-d_rect / 2.0)
+            a_rect = smooth(d_rect / 2.0)
             if a_rect <= 0:
                 row += b"\x00\x00\x00\x00"
                 continue
             # 背景渐变
             t = y / S
             bg = tuple(BG_TOP[i] + (BG_BOT[i] - BG_TOP[i]) * t for i in range(3))
-            # 琥珀折线 mask
-            px, py = OX + x / SCALE, OY + y / SCALE
-            d = min(dist_seg(px, py, a[0], a[1], b[0], b[1]) for a, b in SEGS) - HALF
-            a_line = smooth(-d / (2.0 * SCALE))  # 折线坐标转换回像素
-            # 线上渐变色
-            tg = (y - (OY + 7 * SCALE)) / (10 * SCALE)
+            # 琥珀折线 mask：画布像素 → 24 空间坐标
+            px, py = (x - OX) / SCALE, (y - OY) / SCALE
+            d24 = min(dist_seg(px, py, a[0], a[1], b[0], b[1]) for a, b in SEGS)
+            d_pix = d24 * SCALE - HALF  # 24 空间距离换算回像素再减线宽半径
+            a_line = smooth(d_pix / 2.0)
+            # 线上渐变色（沿折线 y 方向 7→17）
+            tg = (py - 7.0) / 10.0
             line = tuple(AMBER_A[i] + (AMBER_B[i] - AMBER_A[i]) * max(0.0, min(1.0, tg)) for i in range(3))
             a_line = max(0.0, min(1.0, a_line))
             r_ = int(bg[0] * (1 - a_line) + line[0] * a_line)
