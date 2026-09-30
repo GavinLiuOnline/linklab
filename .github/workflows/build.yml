@@ -1,0 +1,83 @@
+name: Release LinkLab
+
+on:
+  push:
+    tags: ["v*"]        # 打 tag 即构建并发布 Release，如 git tag v0.1.0 && git push origin v0.1.0
+  workflow_dispatch:    # 也支持手动触发（仅构建，发草稿 Release）
+
+permissions:
+  contents: write       # 创建 Release 与上传产物需要
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04      # Linux: .deb + .AppImage
+            label: linux
+          - os: windows-latest    # Windows: .exe (NSIS) + .msi
+            label: windows
+          - os: macos-latest      # macOS: .dmg (universal: Apple Silicon + Intel)
+            label: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.label == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Linux system deps
+        if: matrix.label == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libudev-dev librsvg2-dev patchelf libssl-dev build-essential curl wget file
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      # 官方 action：构建 + 自动创建 Release（版本取自 tauri.conf.json/package.json）
+      # 产物自动上传到 Release：deb / AppImage / nsis exe / msi / dmg / app.tar.gz
+      - name: Build & Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: .
+          tagName: v__VERSION__
+          releaseName: "LinkLab v__VERSION__"
+          releaseBody: "LinkLab 通讯调试台 v__VERSION__ — 串口 / CAN / TCP-UDP / MQTT 跨平台调试工具"
+          releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
+          prerelease: false
+          args: ${{ matrix.label == 'macos' && '--target universal-apple-darwin' || '' }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linklab-${{ matrix.label }}
+          path: |
+            src-tauri/target/*/release/bundle/**/*.deb
+            src-tauri/target/*/release/bundle/**/*.AppImage
+            src-tauri/target/*/release/bundle/**/*.msi
+            src-tauri/target/*/release/bundle/*-setup.exe
+            src-tauri/target/*/release/bundle/**/*.dmg
+            src-tauri/target/*/release/bundle/**/*.app.tar.gz
+          if-no-files-found: warn

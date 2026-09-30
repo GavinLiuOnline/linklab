@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinkLab · 通讯调试台</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // 防闪烁：React 挂载前应用持久化的主题
+      try {
+        var s = JSON.parse(localStorage.getItem("linklab.settings") || "{}");
+        if (s.theme === "light") document.documentElement.dataset.theme = "light";
+      } catch (e) {}
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

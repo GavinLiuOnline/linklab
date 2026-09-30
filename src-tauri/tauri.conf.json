@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LinkLab",
+  "version": "0.1.0",
+  "identifier": "io.github.linklab.debugger",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "LinkLab · 通讯调试台",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 640,
+        "center": true
+      }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "串口 / CAN / TCP-UDP / MQTT 通讯调试台",
+    "longDescription": "LinkLab 通讯调试台：面向串口、CAN、TCP/UDP、MQTT 的收发调试、数据转义与协议解析封装（Modbus RTU 等）。"
+  }
+}
