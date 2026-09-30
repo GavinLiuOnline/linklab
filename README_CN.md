@@ -1,4 +1,8 @@
-# 中文 · LinkLab 通讯调试台
+<div align="center">
+  <img src="docs/icon.png" width="110" alt="LinkLab logo">
+  <h1>中文 · LinkLab 通讯调试台</h1>
+  <p><b>串口 / CAN / TCP-UDP / MQTT 跨平台通讯调试工具</b></p>
+</div>
 
 <p align="center">
   <img src="docs/screenshots/serial.png" width="860" alt="LinkLab 串口调试主界面">

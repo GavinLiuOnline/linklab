@@ -1,4 +1,8 @@
-# LinkLab · Communication Debugger
+<div align="center">
+  <img src="docs/icon.png" width="110" alt="LinkLab logo">
+  <h1>LinkLab · Communication Debugger</h1>
+  <p><b>Cross-platform communication debugger for Serial / CAN / TCP-UDP / MQTT</b></p>
+</div>
 
 <p align="center">
   <img src="docs/screenshots/en-serial.png" width="860" alt="LinkLab serial monitor (English UI)">
