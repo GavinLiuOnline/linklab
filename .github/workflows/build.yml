@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22   # pnpm 11 要求 Node >= 22.13（依赖 node:sqlite）
           cache: pnpm
 
       - name: Setup Rust
