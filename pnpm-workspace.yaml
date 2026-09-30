@@ -1,3 +1,4 @@
-# 允许执行构建脚本的依赖（pnpm 10+ 安全策略：默认全部拦截）
-onlyBuiltDependencies:
-  - esbuild
+# 允许执行构建脚本的依赖（pnpm 11+：allowBuilds 映射，true=允许运行其构建脚本；
+# 旧键 onlyBuiltDependencies 自 pnpm 11 起已被移除并忽略）
+allowBuilds:
+  esbuild: true
