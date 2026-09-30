@@ -3,6 +3,7 @@
  * 每个控制台独立 store，避免全页重渲染。
  */
 import { useStore, type ConsoleId, type LogDir, type Store, createStore } from "./store";
+import { tr } from "./i18n";
 
 export interface LogSeg {
   text: string;
@@ -85,7 +86,7 @@ async function flushAll() {
       // 数据洪水保护：保留最新一部分并自动暂停，等用户手动恢复
       const { toast } = await import("./state");
       st.set({ paused: true, lines: batch.slice(-200), frames: s.frames + batch.length });
-      toast("数据速率过高，已自动暂停接收", "warn");
+      toast(tr("数据速率过高，已自动暂停接收"), "warn");
       continue;
     }
     let lines = [...s.lines, ...batch];

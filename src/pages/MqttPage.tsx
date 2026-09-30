@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Console } from "../components/Console";
 import { Periodic } from "../components/Periodic";
-import { useT } from "../lib/i18n";
+import { useT, tr } from "../lib/i18n";
 import { Ic, P } from "../components/icons";
 import { closeChannel, openChannel, sendBytes, subscribeTopic } from "../lib/bridge";
 import { bumpErr, channelStore, setOpen, toast } from "../lib/state";
@@ -74,8 +74,8 @@ export function MqttPage() {
         await closeChannel("mqtt");
       } finally {
         setOpen("mqtt", false);
-        pushLine("mq", "sys", "SYS", [{ text: "通道已关闭" }]);
-        toast("MQTT 已断开", "warn");
+        pushLine("mq", "sys", "SYS", [{ text: t("sys.closed") }]);
+        toast(t("mq.disconnected"), "warn");
       }
       return;
     }
@@ -89,27 +89,27 @@ export function MqttPage() {
         keepalive: +cfg.keepalive,
       });
       setOpen("mqtt", true);
-      pushLine("mq", "sys", "SYS", [{ text: `连接 ${cfg.host}:${cfg.port} · ${cfg.cid}` }]);
+      pushLine("mq", "sys", "SYS", [{ text: `${tr("连接")} ${cfg.host}:${cfg.port} · ${cfg.cid}` }]);
       // 恢复订阅
       for (const s of subs) await subscribeTopic(s.topic, s.qos);
-      if (subs.length) toast(`MQTT 已连接 · 恢复 ${subs.length} 个订阅`);
-      else toast("MQTT 已连接");
+      if (subs.length) toast(`${t("mq.resumedA")}${subs.length}${t("mq.subsU")}`);
+      else toast(t("mq.connected"));
     } catch (e) {
-      toast(String(e) || "连接失败", "err");
+      toast(String(e) || tr("连接失败"), "err");
     }
   };
 
   const subscribe = async () => {
     const tp = subIn.trim();
-    if (!tp) return toast("请输入主题", "warn");
+    if (!tp) return toast(t("mq.topicEmpty"), "warn");
     const q = +qos;
     try {
       await subscribeTopic(tp, q);
       patchSubs([{ topic: tp, qos: q }, ...subs]);
       setSubIn("");
-      toast("已订阅 " + tp);
+      toast(t("mq.subedA") + tp);
     } catch (e) {
-      toast("订阅失败：" + e, "err");
+      toast(tr("订阅失败：") + e, "err");
     }
   };
 
@@ -118,10 +118,10 @@ export function MqttPage() {
     const pl = pubPayload || "{}";
     try {
       await sendBytes("mqtt", [], { topic: tp, text: pl });
-      toast("已发布 → " + tp);
+      toast(t("mq.publishedA") + tp);
     } catch (e) {
       bumpErr("mqtt");
-      toast("发布失败：" + e, "err");
+      toast(tr("发布失败：") + e, "err");
     }
   };
 
@@ -131,16 +131,17 @@ export function MqttPage() {
         <div className="col left">
           <div className="card">
             <header>
-              <Ic className="h-ico">{P.mqtt}</Ic>Broker 连接
+              <Ic className="h-ico">{P.mqtt}</Ic>
+              {t("mq.broker")}
             </header>
             <div className="body">
               <div className="row">
                 <div className="fld grow">
-                  <label>服务器</label>
+                  <label>{t("mq.host")}</label>
                   <input type="text" value={cfg.host} onChange={(e) => patch({ host: e.target.value })} spellCheck={false} />
                 </div>
                 <div className="fld" style={{ width: 96 }}>
-                  <label>端口</label>
+                  <label>{t("net.port")}</label>
                   <input type="number" value={cfg.port} onChange={(e) => patch({ port: e.target.value })} />
                 </div>
               </div>
@@ -152,17 +153,17 @@ export function MqttPage() {
               </div>
               <div className="row">
                 <div className="fld grow">
-                  <label>用户名</label>
-                  <input type="text" value={cfg.user} placeholder="可选" onChange={(e) => patch({ user: e.target.value })} />
+                  <label>{t("mq.user")}</label>
+                  <input type="text" value={cfg.user} placeholder={t("mq.opt")} onChange={(e) => patch({ user: e.target.value })} />
                 </div>
                 <div className="fld grow">
-                  <label>密码</label>
-                  <input type="password" value={cfg.pass} placeholder="可选" onChange={(e) => patch({ pass: e.target.value })} />
+                  <label>{t("mq.pass")}</label>
+                  <input type="password" value={cfg.pass} placeholder={t("mq.opt")} onChange={(e) => patch({ pass: e.target.value })} />
                 </div>
               </div>
               <div className="row">
                 <div className="fld">
-                  <label>协议</label>
+                  <label>{t("mq.proto")}</label>
                   <select value={cfg.proto} onChange={(e) => patch({ proto: e.target.value })}>
                     {["MQTT 3.1.1", "MQTT 5.0"].map((v) => (
                       <option key={v}>{v}</option>
@@ -176,13 +177,14 @@ export function MqttPage() {
               </div>
               <button className={`btn ${ch.open ? "danger" : "primary"}`} style={{ justifyContent: "center" }} onClick={toggle}>
                 <Ic>{P.play}</Ic>
-                <span>{ch.open ? "断开" : "连接"}</span>
+                <span>{ch.open ? t("common.disconnect") : t("common.connect")}</span>
               </button>
             </div>
           </div>
           <div className="card" style={{ flex: 1 }}>
             <header>
-              <Ic className="h-ico">{P.box}</Ic>订阅主题
+              <Ic className="h-ico">{P.box}</Ic>
+              {t("mq.subs")}
             </header>
             <div className="body">
               <div className="row" style={{ flexWrap: "nowrap" }}>
@@ -201,7 +203,7 @@ export function MqttPage() {
                   <option value="2">QoS 2</option>
                 </select>
                 <button className="btn sm" onClick={subscribe}>
-                  订阅
+                  {t("mq.subscribe")}
                 </button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -229,7 +231,7 @@ export function MqttPage() {
               type="text"
               value={pubTopic}
               onChange={(e) => setPubTopic(e.target.value)}
-              placeholder="主题: factory/line1/dev01/cmd"
+              placeholder={t("mq.topicPh")}
               style={{ flex: "0 0 240px" }}
               spellCheck={false}
             />

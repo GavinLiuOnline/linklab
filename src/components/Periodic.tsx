@@ -7,7 +7,7 @@ import { Ic, P } from "../components/icons";
 import { queueStore, toast, type QTask } from "../lib/state";
 import { useStore, type ChannelId } from "../lib/store";
 import { addTask, removeTask, updateTask } from "../lib/queue";
-import { useT } from "../lib/i18n";
+import { useT, tr } from "../lib/i18n";
 
 export function Periodic({ channel }: { channel: ChannelId }) {
   const t = useT();
@@ -115,7 +115,7 @@ export function Periodic({ channel }: { channel: ChannelId }) {
                     onClick={() => updateTask(task.id, { on: !task.on, left: 0 })}
                   />
                   <span className="nm" style={{ minWidth: 0 }}>
-                    {task.name}
+                    {tr(task.name)}
                   </span>
                   {channel === "can" && task.canId && (
                     <span className="cd" style={{ color: "var(--purple)" }}>

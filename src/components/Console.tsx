@@ -4,7 +4,7 @@ import type { ConsoleId } from "../lib/store";
 import { useStore } from "../lib/store";
 import { uiStore, toast } from "../lib/state";
 import { saveText } from "../lib/file";
-import { useT } from "../lib/i18n";
+import { useT, tr } from "../lib/i18n";
 import { Ic, P } from "./icons";
 import { hexOf } from "../lib/bytes";
 import {
@@ -13,6 +13,7 @@ import {
   dlt645Parse,
   nmeaParse,
   canopenParse,
+  chkFail,
 } from "../lib/protocols";
 
 /**
@@ -22,15 +23,10 @@ import {
 
 type PT = "modbus" | "mbascii" | "dlt645" | "nmea" | "custom" | "slip" | "canopen";
 
-const PT_NAME: Record<PT, string> = {
-  modbus: "Modbus RTU",
-  mbascii: "Modbus ASCII",
-  dlt645: "DL/T 645-2007",
-  nmea: "NMEA 0183",
-  custom: "自定义帧头帧",
-  slip: "SLIP 解包",
-  canopen: "CANopen",
-};
+/** 协议显示名（custom/slip 走 tr，随语言切换） */
+function ptName(pt: PT): string {
+  return pt === "custom" ? tr("自定义帧头帧") : pt === "slip" ? tr("SLIP 解包") : pt === "modbus" ? "Modbus RTU" : pt === "mbascii" ? "Modbus ASCII" : pt === "dlt645" ? "DL/T 645-2007" : pt === "nmea" ? "NMEA 0183" : "CANopen";
+}
 
 /** 每个控制台可用的解析协议 */
 const MENU: Record<ConsoleId, PT[]> = {
@@ -60,10 +56,10 @@ function parseRows(pt: PT, l: LogLine): [string, string][] {
       case "canopen": {
         const p = canopenParse(l.canId ?? 0, raw);
         return [
-          ["类型", p.kind + " · " + p.label],
-          ["节点 ID", p.node],
+          [tr("类型"), p.kind + " · " + p.label],
+          [tr("节点 ID"), p.node],
           ["COB-ID", "0x" + (l.canId ?? 0).toString(16).padStart(3, "0").toUpperCase()],
-          ["字段", p.detail],
+          [tr("字段"), p.detail],
         ];
       }
       case "slip": {
@@ -80,37 +76,37 @@ function parseRows(pt: PT, l: LogLine): [string, string][] {
         }
         const mb = modbusParse(out);
         return [
-          ["解包数据", hexOf(out)],
+          [tr("解包数据"), hexOf(out)],
           ["ASCII", out.map((b) => (b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : ".")).join("")],
           ...mb.rows,
         ];
       }
       default: {
         // 自定义帧头帧：AA 55 + LEN + CMD + DATA + SUM
-        if (raw.length < 6) throw new Error("帧长不足 6 字节");
-        if (raw[0] !== 0xaa || raw[1] !== 0x55) throw new Error("帧头不符（应为 AA 55）");
+        if (raw.length < 6) throw new Error(tr("帧长不足 6 字节"));
+        if (raw[0] !== 0xaa || raw[1] !== 0x55) throw new Error(tr("帧头不符（应为 AA 55）"));
         const len = raw[2];
         const calc = raw.slice(0, -1).reduce((a, b) => a + b, 0) & 0xff;
         const ok = calc === raw[raw.length - 1];
         return [
-          ["帧头", "AA 55"],
-          ["长度", String(len)],
+          [tr("帧头"), "AA 55"],
+          [tr("长度"), String(len)],
           ["CMD", "0x" + raw[3].toString(16).padStart(2, "0")],
-          ["数据区", hexOf(raw.slice(4, 4 + len))],
+          [tr("数据区"), hexOf(raw.slice(4, 4 + len))],
           [
-            "SUM 校验",
+            tr("SUM 校验"),
             ok
               ? "✓ " + raw[raw.length - 1].toString(16).padStart(2, "0").toUpperCase()
-              : `✗ 收 ${raw[raw.length - 1].toString(16).padStart(2, "0").toUpperCase()} ≠ 算 ${calc
-                  .toString(16)
-                  .padStart(2, "0")
-                  .toUpperCase()}`,
+              : chkFail(
+                  raw[raw.length - 1].toString(16).padStart(2, "0").toUpperCase(),
+                  calc.toString(16).padStart(2, "0").toUpperCase()
+                ),
           ],
         ];
       }
     }
   } catch (e) {
-    return [["错误", (e as Error).message]];
+    return [[tr("错误"), (e as Error).message]];
   }
 }
 
@@ -183,7 +179,7 @@ export function Console({
   const exportLog = async () => {
     const n = st.lines.length;
     if (!n) return;
-    const head = `# LinkLab 导出 · ${title} · ${new Date().toISOString().slice(0, 19).replace("T", " ")} · 共 ${n} 帧\n# 时间戳\t方向\tHEX\tASCII/文本\n`;
+    const head = `# LinkLab ${tr("导出")} · ${title} · ${new Date().toISOString().slice(0, 19).replace("T", " ")} · ${tr("共")} ${n} ${tr("帧")}\n# ${tr("时间戳")}\t${tr("方向")}\tHEX\tASCII\n`;
     const body = st.lines
       .map((l) => {
         if (!l.raw) return `${l.t}\t${l.label}\t\t${l.segs.map((s) => s.text).join("")}`;
@@ -196,9 +192,9 @@ export function Console({
       .join("\n");
     const name = `linklab-${id}-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.log`;
     try {
-      if (await saveText(name, head + body + "\n")) toast("已导出 " + n + " 帧");
+      if (await saveText(name, head + body + "\n")) toast(`${t("con.exportedA")} ${n} ${t("con.framesU")}`);
     } catch (e) {
-      toast("导出失败：" + e, "err");
+      toast(tr("导出失败：") + e, "err");
     }
   };
 
@@ -212,7 +208,7 @@ export function Console({
 
   const doParse = (pt: PT) => {
     if (!ctx?.line) return;
-    setResult({ title: PT_NAME[pt], rows: parseRows(pt, ctx.line) });
+    setResult({ title: ptName(pt), rows: parseRows(pt, ctx.line) });
     setCtx(null);
   };
 
@@ -312,12 +308,12 @@ export function Console({
             }}
           >
             <div className="ctx-head">
-              协议解析 · {hexOf(ctx.line.raw ?? []).slice(0, 32)}
+              {t("con.parse")} · {hexOf(ctx.line.raw ?? []).slice(0, 32)}
               {hexOf(ctx.line.raw ?? []).length > 32 ? "…" : ""}
             </div>
             {MENU[id].map((pt) => (
               <button key={pt} className="ctx-item" onClick={() => doParse(pt)}>
-                {PT_NAME[pt]}
+                {ptName(pt)}
               </button>
             ))}
           </div>
@@ -328,7 +324,7 @@ export function Console({
           <div className="pmodal" onClick={(e) => e.stopPropagation()}>
             <header>
               <Ic className="h-ico">{P.search}</Ic>
-              协议解析结果 · {result.title}
+              {t("con.parseRes")} · {result.title}
               <button className="btn sm ghost" style={{ marginLeft: "auto" }} onClick={() => setResult(null)}>
                 ✕
               </button>
@@ -339,7 +335,7 @@ export function Console({
                   {result.rows.map(([k, v], i) => (
                     <tr key={i}>
                       <td>{k}</td>
-                      <td style={{ whiteSpace: "pre-line", color: v.includes("✗") || k === "错误" ? "var(--err)" : v.includes("✓") ? "var(--rx)" : "var(--txt2)" }}>
+                      <td style={{ whiteSpace: "pre-line", color: v.includes("✗") || k === tr("错误") ? "var(--err)" : v.includes("✓") ? "var(--rx)" : "var(--txt2)" }}>
                         {v}
                       </td>
                     </tr>

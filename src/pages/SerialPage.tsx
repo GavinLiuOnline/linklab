@@ -15,7 +15,7 @@ import { parseHex, utf8Encode } from "../lib/bytes";
 import { loadCfg, saveCfg } from "../lib/cfg";
 import { pushLine } from "../lib/consoles";
 import { Periodic } from "../components/Periodic";
-import { useT } from "../lib/i18n";
+import { useT, tr, type I18nKey } from "../lib/i18n";
 
 /** 常用波特率预设（选择写入输入框，输入框可自由填写任意值） */
 const BAUDS = ["1200", "2400", "4800", "9600", "14400", "19200", "38400", "57600", "115200", "230400", "460800", "500000", "576000", "921600", "1000000", "1500000", "2000000"];
@@ -50,11 +50,19 @@ const DEF: SerialCfg = {
   crc: "none",
 };
 
-const CRC_LABEL: Record<CrcMode, string> = {
-  none: "无校验",
-  sum8: "SUM-8 累加和",
-  crc8: "CRC-8 (0x07)",
-  crc16m: "CRC16-Modbus (RTU)",
+const CRC_LABEL: Record<CrcMode, I18nKey> = {
+  none: "sp.crcNone",
+  sum8: "sp.crcSum8",
+  crc8: "sp.crcCrc8",
+  crc16m: "sp.crc16m",
+  crc16ccitt: "sp.crcCcitt",
+};
+
+/** 发送备注用的校验短标签（语言无关） */
+const CRC_SHORT: Partial<Record<CrcMode, string>> = {
+  sum8: "SUM-8",
+  crc8: "CRC-8",
+  crc16m: "CRC16-Modbus",
   crc16ccitt: "CRC16-CCITT",
 };
 
@@ -71,6 +79,7 @@ function BaudField({
   onChange: (v: string) => void;
   title?: string;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -104,7 +113,7 @@ function BaudField({
           borderRadius: 5,
         }}
         onClick={open ? () => setOpen(false) : show}
-        title="常用波特率"
+        title={title ?? t("sp.baudTitle")}
       >
         <Ic size={12}>{P.chevDown}</Ic>
       </button>
@@ -161,8 +170,8 @@ export function SerialPage() {
         await closeChannel("serial");
       } finally {
         setOpen("serial", false);
-        pushLine("sp", "sys", "SYS", [{ text: "通道已关闭" }]);
-        toast("SERIAL 已断开", "warn");
+        pushLine("sp", "sys", "SYS", [{ text: t("sys.closed") }]);
+        toast(t("sp.disconnected"), "warn");
       }
       return;
     }
@@ -183,25 +192,25 @@ export function SerialPage() {
         split,
       });
       setOpen("serial", true);
-      pushLine("sp", "sys", "SYS", [{ text: `通道已打开 · ${cfg.port} @ ${cfg.baud}` }]);
-      toast("SERIAL 已连接");
+      pushLine("sp", "sys", "SYS", [{ text: `${t("sys.opened")} · ${cfg.port} @ ${cfg.baud}` }]);
+      toast(t("sp.connected"));
     } catch (e) {
-      toast(String(e).replace(/^.*\((.*)\).*$/, "$1") || "打开串口失败", "err");
+      toast(String(e).replace(/^.*\((.*)\).*$/, "$1") || tr("打开串口失败"), "err");
     }
   };
 
   const send = async () => {
     const raw = text.trim();
-    if (!raw) return toast("请输入发送内容", "warn");
+    if (!raw) return toast(t("send.empty"), "warn");
     try {
       let bytes = fmt === "HEX" ? parseHex(raw) : utf8Encode(raw);
       const withCrc = fmt === "HEX" && cfg.crc !== "none";
       if (withCrc) bytes = appendCrc(bytes, cfg.crc);
-      await sendBytes("serial", bytes, { note: withCrc ? "+" + CRC_LABEL[cfg.crc].split(" ")[0] : undefined, silent: !cfg.echo });
-      toast(`已发送 ${bytes.length} B`);
+      await sendBytes("serial", bytes, { note: withCrc ? "+" + CRC_SHORT[cfg.crc] : undefined, silent: !cfg.echo });
+      toast(`${t("common.sentA")} ${bytes.length} B`);
     } catch (e) {
       bumpErr("serial");
-      toast("发送失败：" + e, "err");
+      toast(tr("发送失败：") + e, "err");
     }
   };
 
@@ -228,7 +237,7 @@ export function SerialPage() {
                       style={{ flex: 1, minWidth: 0, width: "auto" }}
                     >
                       {!ports.some((p) => p.name === cfg.port) && (
-                        <option value={cfg.port}>{cfg.port || "无可用设备"}（已断开）</option>
+                        <option value={cfg.port}>{cfg.port || t("sp.noDevice")}{t("sp.offTag")}</option>
                       )}
                       {ports.map((p) => (
                         <option key={p.name} value={p.name}>
@@ -240,7 +249,7 @@ export function SerialPage() {
                       className="btn ghost"
                       style={{ padding: "6px 7px" }}
                       onClick={refreshPorts}
-                      title="刷新设备列表"
+                      title={t("sp.refresh")}
                     >
                       <Ic size={13}>{P.reload}</Ic>
                     </button>
@@ -331,7 +340,11 @@ export function SerialPage() {
                 <input type="number" value={cfg.gap} min={1} max={500} style={{ width: "100%" }} onChange={(e) => patch({ gap: e.target.value })} />
               </div>
               <div className="tag-note">
-                串口为字节流，调试器按 <b>帧间隔超时</b> 或 <b>\r\n</b> 切帧后，再交给协议工厂解析。
+                {t("sp.noteA")}
+                <b>{t("sp.noteGap")}</b>
+                {t("sp.noteOr")}
+                <b>\r\n</b>
+                {t("sp.noteB")}
               </div>
             </div>
           </div>
@@ -351,7 +364,7 @@ export function SerialPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder={fmt === "HEX" ? "HEX: 01 03 00 00 00 02 C4 0B" : "文本内容"}
+              placeholder={fmt === "HEX" ? "HEX: 01 03 00 00 00 02 C4 0B" : t("sp.textPh")}
               spellCheck={false}
             />
             <select
@@ -362,7 +375,7 @@ export function SerialPage() {
             >
               {(Object.keys(CRC_LABEL) as CrcMode[]).map((m) => (
                 <option key={m} value={m}>
-                  {CRC_LABEL[m]}
+                  {t(CRC_LABEL[m])}
                 </option>
               ))}
             </select>

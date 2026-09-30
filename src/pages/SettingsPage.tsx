@@ -4,7 +4,7 @@ import { saveSettings, uiStore, toast } from "../lib/state";
 import { useStore } from "../lib/store";
 import { mockActive } from "../lib/bridge";
 import { saveText } from "../lib/file";
-import { useT } from "../lib/i18n";
+import { useT, tr } from "../lib/i18n";
 
 const ACCENTS = ["#ffb454", "#4ec9b0", "#6cb6ff", "#ff7b72", "#b48cff"];
 
@@ -15,9 +15,9 @@ export function SettingsPage() {
   /** 导出四个控制台全部会话内容（原始字节重建） */
   const exportLog = async () => {
     const ids = [
-      ["sp", "串口 SERIAL"],
-      ["can", "CAN 总线"],
-      ["net", "网络 SOCKET"],
+      ["sp", t("ch.serial")],
+      ["can", t("ch.can")],
+      ["net", t("ch.net")],
       ["mq", "MQTT"],
     ] as const;
     let total = 0;
@@ -35,14 +35,14 @@ export function SettingsPage() {
             return `${l.t}\t${l.label}\t${hex}\t${ascii}`;
           })
           .join("\n");
-        return `# ===== ${name}（${st.lines.length} 帧）=====\n${body}`;
+        return `# ===== ${name}（${st.lines.length} ${t("con.frames")}）=====\n${body}`;
       })
       .join("\n\n");
-    const head = `# LinkLab 会话导出 · ${new Date().toISOString().slice(0, 19).replace("T", " ")} · 共 ${total} 帧\n# 时间戳\t方向\tHEX\tASCII\n\n`;
+    const head = `# LinkLab ${tr("会话导出")} · ${new Date().toISOString().slice(0, 19).replace("T", " ")} · ${tr("共")} ${total} ${tr("帧")}\n# ${t("col.ts")}\t${t("col.dir")}\tHEX\tASCII\n\n`;
     try {
-      if (await saveText("linklab-session.log", head + dump + "\n")) toast("已导出会话日志");
+      if (await saveText("linklab-session.log", head + dump + "\n")) toast(t("st.exported"));
     } catch (e) {
-      toast("导出失败：" + e, "err");
+      toast(tr("导出失败：") + e, "err");
     }
   };
 
@@ -78,9 +78,10 @@ export function SettingsPage() {
               {t("st.mock")}
             </label>
             <div className="tag-note">
-              当前状态：<b>{mockActive() ? "模拟模式" : "真实 IO（Tauri 后端）"}</b>
+              {t("st.curState")}
+              <b>{mockActive() ? t("st.mockOn") : t("st.realOn")}</b>
               <br />
-              真实模式由 Rust 侧驱动：serialport / socketcan / tokio / rumqttc；协议解析仍在前端完成。
+              {t("st.realNote")}
             </div>
           </div>
         </div>
@@ -186,17 +187,26 @@ export function SettingsPage() {
         {/* ── 关于 ── */}
         <div className="card">
           <header>
-            <Ic className="h-ico">{P.box}</Ic>关于
+            <Ic className="h-ico">{P.box}</Ic>
+            {t("st.about")}
           </header>
           <div className="body">
             <div className="tag-note">
-              <b>LinkLab 0.1.0</b> · 通讯调试台 — 串口 / CAN / TCP-UDP / MQTT
+              <b>LinkLab 0.1.0</b> · {t("st.tagline")}
               <br />
-              本应用以 <b>Tauri 2</b> 打包（Rust 侧经 <b>serialport / socketcan / rumqttc</b> 实现真实 IO），产物体积小、启动快。
+              {t("st.aboutA")}
+              <b>Tauri 2</b>
+              {t("st.aboutB")}
+              <b>serialport / socketcan / rumqttc</b>
+              {t("st.aboutC")}
               <br />
-              <br />· 构建：<b>pnpm app:build</b>，产物在 src-tauri/target/release/bundle
+              <br />
+              {t("st.buildA")}
+              <b>pnpm app:build</b>
+              {t("st.buildB")}
               <br />· Linux: deb / AppImage · Windows: msi / nsis · macOS: dmg / app
-              <br />· 跨平台产物建议在各目标系统（或 CI runner）上构建，见 .github/workflows/build.yml
+              <br />
+              {t("st.ciNote")}
             </div>
           </div>
         </div>

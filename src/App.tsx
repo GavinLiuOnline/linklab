@@ -10,6 +10,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { useStore } from "./lib/store";
 import { uiStore } from "./lib/state";
 import { initBridge, setForceMock } from "./lib/bridge";
+import { setI18nLang } from "./lib/i18n";
 import { setMaxLines, setTsMode } from "./lib/consoles";
 import { queueTick } from "./lib/queue";
 
@@ -29,6 +30,7 @@ export default function App() {
     setMaxLines(settings.maxLines);
     setTsMode(settings.tsFormat);
     setForceMock(settings.forceMock);
+    setI18nLang(settings.lang ?? "zh"); // 同步到模块级 tr()，供协议解析输出等非组件层使用
   }, [settings]);
 
   useEffect(() => {

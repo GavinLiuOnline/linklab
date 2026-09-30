@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Console } from "../components/Console";
 import { Periodic } from "../components/Periodic";
-import { useT } from "../lib/i18n";
+import { useT, tr, type I18nKey } from "../lib/i18n";
 import { Ic, P } from "../components/icons";
 import { closeChannel, openChannel, sendBytes } from "../lib/bridge";
 import { bumpErr, channelStore, setOpen, toast } from "../lib/state";
@@ -33,11 +33,11 @@ const DEF: NetCfg = {
   fixedLen: "64",
 };
 
-const SPLIT_LABEL: Record<NetCfg["split"], string> = {
-  gap: "帧间隔超时",
-  fixed: "固定长度",
-  crlf: "结尾符 \\r\\n",
-  mbap: "Modbus TCP (MBAP 长度)",
+const SPLIT_LABEL: Record<NetCfg["split"], I18nKey> = {
+  gap: "net.splitGap",
+  fixed: "net.splitFixed",
+  crlf: "net.splitCrlf",
+  mbap: "net.splitMbap",
 };
 
 export function NetPage() {
@@ -69,8 +69,8 @@ export function NetPage() {
         await closeChannel("net");
       } finally {
         setOpen("net", false);
-        pushLine("net", "sys", "SYS", [{ text: "通道已关闭" }]);
-        toast("NET 已断开", "warn");
+        pushLine("net", "sys", "SYS", [{ text: t("sys.closed") }]);
+        toast(t("net.disconnected"), "warn");
       }
       return;
     }
@@ -89,26 +89,26 @@ export function NetPage() {
       pushLine("net", "sys", "SYS", [
         {
           text: isSrv
-            ? `服务端监听 ${cfg.bind}${cfg.mode === "tcps" ? ` · 最大连接 ${cfg.maxConn}` : ""}`
+            ? `${t("net.listening")}${cfg.bind}${cfg.mode === "tcps" ? ` · ${t("net.maxConn")} ${cfg.maxConn}` : ""}`
             : `${cfg.mode.toUpperCase()} → ${cfg.host}:${cfg.port}`,
         },
       ]);
-      toast("NET 已连接");
+      toast(t("net.connected"));
     } catch (e) {
-      toast(String(e) || "连接失败", "err");
+      toast(String(e) || tr("连接失败"), "err");
     }
   };
 
   const send = async () => {
     const raw = text.trim();
-    if (!raw) return toast("请输入发送内容", "warn");
+    if (!raw) return toast(t("send.empty"), "warn");
     try {
       const bytes = fmt === "HEX" ? parseHex(raw) : Array.from(new TextEncoder().encode(raw));
       await sendBytes("net", bytes);
-      toast(`已发送 ${bytes.length} B`);
+      toast(`${t("common.sentA")} ${bytes.length} B`);
     } catch (e) {
       bumpErr("net");
-      toast("发送失败：" + e, "err");
+      toast(tr("发送失败：") + e, "err");
     }
   };
 
@@ -118,7 +118,8 @@ export function NetPage() {
         <div className="col left">
           <div className="card">
             <header>
-              <Ic className="h-ico">{P.net}</Ic>连接配置
+              <Ic className="h-ico">{P.net}</Ic>
+              {t("net.cfg")}
             </header>
             <div className="body">
               <div className="seg grid">
@@ -162,7 +163,7 @@ export function NetPage() {
               )}
               <button className={`btn ${ch.open ? "danger" : "primary"}`} style={{ justifyContent: "center" }} onClick={toggle}>
                 <Ic>{P.play}</Ic>
-                <span>{ch.open ? "断开" : "连接"}</span>
+                <span>{ch.open ? t("common.disconnect") : t("common.connect")}</span>
               </button>
               <div className="stat">
                 <span className="txv">
@@ -176,30 +177,31 @@ export function NetPage() {
           </div>
           <div className="card" style={{ flex: 1 }}>
             <header>
-              <Ic className="h-ico">{P.options}</Ic>选项
+              <Ic className="h-ico">{P.options}</Ic>
+              {t("net.options")}
             </header>
             <div className="body">
               <label className="opt">
                 <input type="checkbox" checked={cfg.nodelay} onChange={(e) => patch({ nodelay: e.target.checked })} />
-                TCP_NODELAY（禁用 Nagle）
+                {t("net.nodelay")}
               </label>
               <label className="opt">
                 <input type="checkbox" checked={cfg.keepalive} onChange={(e) => patch({ keepalive: e.target.checked })} />
                 Keep-Alive
               </label>
               <div className="fld">
-                <label>分包策略</label>
+                <label>{t("net.split")}</label>
                 <select value={cfg.split} onChange={(e) => patch({ split: e.target.value as NetCfg["split"] })}>
                   {(Object.keys(SPLIT_LABEL) as NetCfg["split"][]).map((k) => (
                     <option key={k} value={k}>
-                      {SPLIT_LABEL[k]}
+                      {t(SPLIT_LABEL[k])}
                     </option>
                   ))}
                 </select>
               </div>
               {cfg.split === "fixed" && (
                 <div className="fld">
-                  <label>固定帧长 (B)</label>
+                  <label>{t("net.fixedLen")}</label>
                   <input type="number" value={cfg.fixedLen} style={{ width: 120 }} onChange={(e) => patch({ fixedLen: e.target.value })} />
                 </div>
               )}

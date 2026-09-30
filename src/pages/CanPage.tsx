@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Console } from "../components/Console";
 import { Periodic } from "../components/Periodic";
-import { useT } from "../lib/i18n";
+import { useT, tr } from "../lib/i18n";
 import { Ic, P } from "../components/icons";
 import { closeChannel, inTauri, openChannel, sendBytes } from "../lib/bridge";
 import { bumpErr, channelStore, setOpen, toast } from "../lib/state";
@@ -55,8 +55,8 @@ export function CanPage() {
         await closeChannel("can");
       } finally {
         setOpen("can", false);
-        pushLine("can", "sys", "SYS", [{ text: "通道已关闭" }]);
-        toast("CAN 已断开", "warn");
+        pushLine("can", "sys", "SYS", [{ text: t("sys.closed") }]);
+        toast(t("can.disconnected"), "warn");
       }
       return;
     }
@@ -72,30 +72,30 @@ export function CanPage() {
       });
       setOpen("can", true);
       pushLine("can", "sys", "SYS", [
-        { text: `通道已打开 · ${cfg.iface} @ ${cfg.br}${filterIds.length ? ` · 硬件过滤 ${cfg.filter}` : ""}` },
+        { text: `${t("sys.opened")} · ${cfg.iface} @ ${cfg.br}${filterIds.length ? ` · ${t("can.hwF")}${cfg.filter}` : ""}` },
       ]);
-      toast("CAN 已连接");
+      toast(t("can.connected"));
     } catch (e) {
-      toast(String(e) || "打开 CAN 失败", "err");
+      toast(String(e) || tr("打开 CAN 失败"), "err");
     }
   };
 
   const send = async () => {
     const canId = parseInt(id, 16);
-    if (isNaN(canId)) return toast("CAN ID 必须为 HEX", "err");
+    if (isNaN(canId)) return toast(tr("CAN ID 必须为 HEX"), "err");
     const data = payload
       .trim()
       .split(/[\s,]+/)
       .filter(Boolean)
       .map((x) => parseInt(x, 16));
-    if (data.some(isNaN)) return toast("负载必须为 HEX 字节序列", "err");
-    if (data.length === 0) return toast("请输入负载数据", "warn");
-    if (data.length > 8) return toast("CAN 经典帧负载最多 8 字节", "warn");
+    if (data.some(isNaN)) return toast(tr("负载必须为 HEX 字节序列"), "err");
+    if (data.length === 0) return toast(tr("请输入负载数据"), "warn");
+    if (data.length > 8) return toast(tr("CAN 经典帧负载最多 8 字节"), "warn");
     try {
       await sendBytes("can", data, { canId, rtr });
     } catch (e) {
       bumpErr("can");
-      toast("发送失败：" + e, "err");
+      toast(tr("发送失败：") + e, "err");
     }
   };
 
@@ -105,13 +105,14 @@ export function CanPage() {
         <div className="col left">
           <div className="card">
             <header>
-              <Ic className="h-ico">{P.can}</Ic>通道配置
+              <Ic className="h-ico">{P.can}</Ic>
+              {t("can.cfg")}
             </header>
             <div className="body">
               <div className="fld">
-                <label>接口</label>
+                <label>{t("can.iface")}</label>
                 <select value={cfg.iface} onChange={(e) => patch({ iface: e.target.value })}>
-                  {ifaces.length === 0 && <option value={cfg.iface}>未检测到 CAN 接口</option>}
+                  {ifaces.length === 0 && <option value={cfg.iface}>{t("can.none")}</option>}
                   {ifaces.map((v) => (
                     <option key={v} value={v}>
                       {v} — socketCAN
@@ -121,7 +122,7 @@ export function CanPage() {
               </div>
               <div className="row">
                 <div className="fld grow">
-                  <label>波特率</label>
+                  <label>{t("sp.baud")}</label>
                   <select value={cfg.br} onChange={(e) => patch({ br: e.target.value })}>
                     {["125k", "250k", "500k", "1M", "2M (FD)"].map((v) => (
                       <option key={v}>{v}</option>
@@ -129,16 +130,16 @@ export function CanPage() {
                   </select>
                 </div>
                 <div className="fld grow">
-                  <label>帧类型</label>
+                  <label>{t("can.frameType")}</label>
                   <select value={cfg.type} onChange={(e) => patch({ type: e.target.value as CanCfg["type"] })}>
-                    <option value="std">标准帧 (11bit)</option>
-                    <option value="ext">扩展帧 (29bit)</option>
+                    <option value="std">{t("can.std")}</option>
+                    <option value="ext">{t("can.ext")}</option>
                   </select>
                 </div>
               </div>
               <button className={`btn ${ch.open ? "danger" : "primary"}`} style={{ justifyContent: "center" }} onClick={toggle}>
                 <Ic>{P.play}</Ic>
-                <span>{ch.open ? "停止通道" : "启动通道"}</span>
+                <span>{ch.open ? t("can.stop") : t("can.start")}</span>
               </button>
               <div className="stat">
                 <span className="txv">
@@ -152,17 +153,20 @@ export function CanPage() {
                 </span>
               </div>
               <div className="tag-note">
-                socketCAN 的波特率由系统配置（<b>ip link set can0 type can bitrate 500000</b>），本工具不做修改。
+                {t("can.brNoteA")}
+                <b>ip link set can0 type can bitrate 500000</b>
+                {t("can.brNoteB")}
               </div>
             </div>
           </div>
           <div className="card">
             <header>
-              <Ic className="h-ico">{P.filter}</Ic>硬件过滤器
+              <Ic className="h-ico">{P.filter}</Ic>
+              {t("can.hwFilterH")}
             </header>
             <div className="body">
               <div className="fld">
-                <label>只收 ID (HEX, 逗号分隔)</label>
+                <label>{t("can.filterLbl")}</label>
                 <input
                   type="text"
                   value={cfg.filter}
@@ -173,7 +177,7 @@ export function CanPage() {
               </div>
               <label className="opt">
                 <input type="checkbox" checked={cfg.showRtr} onChange={(e) => patch({ showRtr: e.target.checked })} />
-                显示 RTR 帧
+                {t("can.showRtr")}
               </label>
             </div>
           </div>
